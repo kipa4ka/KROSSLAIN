@@ -8,23 +8,45 @@ function getLastUpdateTime() {
 
 // Функція для збереження даних у localStorage
 function saveDataToStorage(products) {
-  localStorage.setItem('cachedProducts', JSON.stringify(products));
-  localStorage.setItem('lastUpdateTime', Date.now().toString());
+  try {
+    localStorage.setItem('cachedProducts', JSON.stringify(products));
+    localStorage.setItem('lastUpdateTime', Date.now().toString());
+  } catch (e) {
+    console.error("Помилка збереження в localStorage:", e);
+  }
+}
+
+// Функція для отримання кешованих даних
+function getCachedProducts() {
+  try {
+    const cached = localStorage.getItem('cachedProducts');
+    return cached ? JSON.parse(cached) : null;
+  } catch (e) {
+    console.error("Помилка читання з localStorage:", e);
+    return null;
+  }
 }
 
 // Функція для завантаження даних з XML
 function fetchXmlData() {
   fetch(xmlUrl)
-    .then(res => res.text())
-    .then(str => {
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+      return res.text();
+}).then(str => {
       const parser = new DOMParser();
       const xml = parser.parseFromString(str, "application/xml");
+
+      // Перевірка на помилки парсингу XML
+      if (xml.getElementsByTagName("parsererror").length > 0) {
+        throw new Error("Помилка парсингу XML");
+      }
 
       const categories = xml.getElementsByTagName("category");
       const categorySelect = document.getElementById("categorySelect");
 
-      // Додаємо категорії у select
-      categorySelect.innerHTML = '<option value="all">Всі</option>'; // Очищуємо і додаємо "Всі"
+      // Очищаємо select і додаємо опцію "Всі"
+      categorySelect.innerHTML = '<option value="all">Всі</option>';
       for (let category of categories) {
         const option = document.createElement("option");
         option.value = category.getAttribute("id");
@@ -62,33 +84,42 @@ function fetchXmlData() {
       // Сортування за id (нові зверху)
       allProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
 
-      saveDataToStorage(allProducts); // Зберігаємо в localStorage
+      // Зберігаємо в localStorage і оновлюємо відображення
+      saveDataToStorage(allProducts);
       renderProducts(allProducts);
+
+      // Плануємо наступне оновлення через 30 хвилин
+      scheduleNextUpdate();
     })
-    .catch(err => console.error("Помилка завантаження XML:", err));
+    .catch(err => {
+      console.error("Помилка завантаження XML:", err);
+      const cachedProducts = getCachedProducts();
+      if (cachedProducts) {
+        allProducts = cachedProducts;
+        renderProducts(allProducts);
+        alert("Використовуються збережені дані через помилку завантаження.");
+      } else {
+        alert("Помилка завантаження даних і немає кешованих даних.");
+      }
+      // Плануємо наступне оновлення, навіть якщо сталася помилка
+      scheduleNextUpdate();
+    });
 }
 
-// Основна логіка завантаження
-const lastUpdate = getLastUpdateTime();
-const thirtyMinutes = 30 * 60 * 1000; // 30 хвилин у мілісекундах
-
-if (Date.now() - lastUpdate < thirtyMinutes) {
-  // Використовуємо кешовані дані
-  const cachedProducts = localStorage.getItem('cachedProducts');
-  if (cachedProducts) {
-    allProducts = JSON.parse(cachedProducts);
-    renderProducts(allProducts);
-  } else {
-    fetchXmlData(); // Якщо немає кешу, завантажуємо
-  }
-} else {
-  // Оновлюємо дані
-  fetchXmlData();
+// Функція для планування наступного оновлення
+function scheduleNextUpdate() {
+  const thirtyMinutes = 30 * 60 * 1000; // 30 хвилин у мілісекундах
+  setTimeout(() => {
+    fetchXmlData();
+  }, thirtyMinutes);
 }
 
 // Відображення товарів
 function renderProducts(products) {
   const container = document.getElementById("products");
+  const lastUpdateDisplay = document.getElementById("lastUpdate");
+  const lastUpdate = getLastUpdateTime();
+  lastUpdateDisplay.textContent = lastUpdate ? new Date(lastUpdate).toLocaleString() : "Ніколи";
   container.innerHTML = "";
 
   products.forEach(product => {
@@ -129,10 +160,22 @@ document.getElementById("categorySelect").addEventListener("change", function() 
   }
 });
 
-// Автоматичне оновлення кожні 30 хвилин
-setInterval(() => {
-  const lastUpdate = getLastUpdateTime();
-  if (Date.now() - lastUpdate >= thirtyMinutes) {
+// Початкове завантаження
+const thirtyMinutes = 30 * 60 * 1000;
+const lastUpdate = getLastUpdateTime();
+
+if (Date.now() - lastUpdate < thirtyMinutes) {
+  const cachedProducts = getCachedProducts();
+  if (cachedProducts) {
+    allProducts = cachedProducts;
+    renderProducts(allProducts);
+    // Плануємо наступне оновлення з урахуванням часу, що залишився
+    const timeSinceLastUpdate = Date.now() - lastUpdate;
+    const timeUntilNextUpdate = thirtyMinutes - timeSinceLastUpdate;
+    setTimeout(fetchXmlData, timeUntilNextUpdate);
+  } else {
     fetchXmlData();
   }
-}, thirtyMinutes);
+} else {
+  fetchXmlData();
+}
