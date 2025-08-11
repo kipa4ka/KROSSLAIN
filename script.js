@@ -45,6 +45,9 @@ fetch(xmlUrl)
     }
     allProducts = Object.values(productsByGroup);
 
+    // Сортування за id (нові зверху)
+    allProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+
     renderProducts(allProducts);
   })
   .catch(err => console.error("Помилка завантаження XML:", err));
@@ -85,9 +88,9 @@ function renderProducts(products) {
 document.getElementById("categorySelect").addEventListener("change", function() {
   const selected = this.value;
   if (selected === "all") {
-    renderProducts(allProducts);
+    renderProducts(allProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id)));
   } else {
     const filtered = allProducts.filter(p => p.categoryId === selected);
-    renderProducts(filtered);
+    renderProducts(filtered.sort((a, b) => parseInt(b.id) - parseInt(a.id)));
   }
 });
