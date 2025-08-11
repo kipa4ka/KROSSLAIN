@@ -22,6 +22,13 @@ header {
     font-size: 16px;
 }
 
+#status {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 14px;
+    color: #555;
+}
+
 footer {
     background-color: #222;
     color: white;

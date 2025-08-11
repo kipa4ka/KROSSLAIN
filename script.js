@@ -9,8 +9,13 @@ function getLastUpdateTime() {
 // Функція для збереження даних у localStorage
 function saveDataToStorage(products) {
   try {
-    localStorage.setItem('cachedProducts', JSON.stringify(products));
-    localStorage.setItem('lastUpdateTime', Date.now().toString());
+    if (products && products.length > 0) {
+      localStorage.setItem('cachedProducts', JSON.stringify(products));
+      localStorage.setItem('lastUpdateTime', Date.now().toString());
+      console.log("Дані успішно збережено в localStorage");
+    } else {
+      console.warn("Не збережено в localStorage: список товарів порожній");
+    }
   } catch (e) {
     console.error("Помилка збереження в localStorage:", e);
   }
@@ -28,7 +33,22 @@ function getCachedProducts() {
 }
 
 // Функція для завантаження даних з XML
-function fetchXmlData() {
+function fetchXmlData(forceFetch = false) {
+  const updateInterval = 3 * 60 * 1000; // 3 хвилини
+  const lastUpdate = getLastUpdateTime();
+  const now = Date.now();
+  const cachedProducts = getCachedProducts();
+
+  if (!forceFetch && cachedProducts && (now - lastUpdate < updateInterval)) {
+    console.log("Використовуються свіжі кешовані дані");
+    allProducts = cachedProducts;
+    const newProducts = allProducts.slice(0, 100);
+    renderProducts(newProducts);
+    scheduleNextUpdate();
+    return;
+  }
+
+  console.log("Розпочато завантаження даних з API");
   fetch(xmlUrl)
     .then(res => {
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
@@ -47,10 +67,11 @@ function fetchXmlData() {
       // Завантаження категорій
       const categories = xml.getElementsByTagName("category");
       const categorySelect = document.getElementById("categorySelect");
-      console.log(`Знайдено категорій: ${categories.length}`);
+      console.log(`Знайдено категорій у XML: ${categories.length}`);
 
-      // Очищаємо select і додаємо опцію "Всі"
-      categorySelect.innerHTML = '<option value="all">Всі</option>';
+      // Очищаємо select і додаємо опцію "Новинки"
+      categorySelect.innerHTML = '<option value="new">Новинки</option>';
+      let categoriesAdded = 0;
       for (let category of categories) {
         const id = category.getAttribute("id");
         const name = category.textContent.trim();
@@ -60,9 +81,14 @@ function fetchXmlData() {
           option.textContent = name;
           categorySelect.appendChild(option);
           console.log(`Додано категорію: ID=${id}, Назва=${name}`);
+          categoriesAdded++;
         } else {
           console.warn(`Пропущено категорію: ID=${id}, Назва=${name}`);
         }
+      }
+      if (categoriesAdded === 0) {
+        console.warn("Попередження: жодної категорії не додано до select");
+        localStorage.clear(); // Очищаємо кеш, якщо категорії відсутні
       }
 
       // Завантаження товарів
@@ -96,26 +122,36 @@ function fetchXmlData() {
 
       // Діагностика: перевіряємо кількість товарів
       console.log(`Знайдено унікальних товарів: ${allProducts.length}`);
+      if (allProducts.length === 0) {
+        console.warn("Попередження: жодного товару не знайдено");
+        localStorage.clear(); // Очищаємо кеш, якщо товари відсутні
+      }
 
       // Сортування за id (нові зверху)
       allProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
 
       // Зберігаємо в localStorage і оновлюємо відображення
       saveDataToStorage(allProducts);
-      renderProducts(allProducts);
+      
+      // Відображаємо 100 найновіших товарів для "Новинки"
+      const newProducts = allProducts.slice(0, 100);
+      renderProducts(newProducts);
 
-      // Плануємо наступне оновлення через 30 хвилин
+      // Плануємо наступне оновлення через 3 хвилини
       scheduleNextUpdate();
     })
     .catch(err => {
       console.error("Помилка завантаження XML:", err);
       const cachedProducts = getCachedProducts();
-      if (cachedProducts) {
+      if (cachedProducts && cachedProducts.length > 0) {
         allProducts = cachedProducts;
-        renderProducts(allProducts);
+        const newProducts = allProducts.slice(0, 100);
+        renderProducts(newProducts);
         alert("Використовуються збережені дані через помилку завантаження.");
       } else {
-        alert("Помилка завантаження даних і немає кешованих даних.");
+        localStorage.clear(); // Очищаємо кеш, якщо його немає або він порожній
+        alert("Помилка завантаження даних і немає кешованих даних. Спроба повторного завантаження...");
+        fetchXmlData(true); // Повторний запит після очищення кешу з forceFetch
       }
       // Плануємо наступне оновлення, навіть якщо сталася помилка
       scheduleNextUpdate();
@@ -124,11 +160,11 @@ function fetchXmlData() {
 
 // Функція для планування наступного оновлення
 function scheduleNextUpdate() {
-  const thirtyMinutes = 30 * 60 * 1000; // 30 хвилин у мілісекундах
+  const updateInterval = 3 * 60 * 1000; // 3 хвилини у мілісекундах
   setTimeout(() => {
     console.log("Виконується заплановане оновлення даних");
-    fetchXmlData();
-  }, thirtyMinutes);
+    fetchXmlData(true); // Force fetch для оновлення
+  }, updateInterval);
 }
 
 // Відображення товарів
@@ -173,8 +209,9 @@ function renderProducts(products) {
 document.getElementById("categorySelect").addEventListener("change", function() {
   const selected = this.value;
   console.log(`Вибрано категорію: ${selected}`);
-  if (selected === "all") {
-    renderProducts(allProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id)));
+  if (selected === "new") {
+    const newProducts = allProducts.slice(0, 100);
+    renderProducts(newProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id)));
   } else {
     const filtered = allProducts.filter(p => p.categoryId === selected);
     console.log(`Відфільтровано товарів для категорії ${selected}: ${filtered.length}`);
@@ -183,24 +220,5 @@ document.getElementById("categorySelect").addEventListener("change", function() 
 });
 
 // Початкове завантаження
-const thirtyMinutes = 30 * 60 * 1000;
-const lastUpdate = getLastUpdateTime();
-
-if (Date.now() - lastUpdate < thirtyMinutes) {
-  const cachedProducts = getCachedProducts();
-  if (cachedProducts) {
-    allProducts = cachedProducts;
-    renderProducts(allProducts);
-    // Плануємо наступне оновлення з урахуванням часу, що залишився
-    const timeSinceLastUpdate = Date.now() - lastUpdate;
-    const timeUntilNextUpdate = thirtyMinutes - timeSinceLastUpdate;
-    console.log(`Наступне оновлення через: ${timeUntilNextUpdate / 1000 / 60} хвилин`);
-    setTimeout(fetchXmlData, timeUntilNextUpdate);
-  } else {
-    console.log("Кеш відсутній, виконуємо запит до API");
-    fetchXmlData();
-  }
-} else {
-  console.log("Кеш застарілий, виконуємо запит до API");
-  fetchXmlData();
-}
+console.log("Розпочато початкове завантаження");
+fetchXmlData(); // Початкове завантаження без forceFetch
