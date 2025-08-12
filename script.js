@@ -1,4 +1,4 @@
-const xmlUrl = "https://easydrop.one/prom-export?key=24481682017071&pid=32494472342744";
+const backendUrl = 'https://твоя-render-url.onrender.com/api/products'; // Заміни на реальний URL з Render
 let allProducts = [];
 
 // Функція для отримання часу останнього оновлення з localStorage
@@ -32,120 +32,57 @@ function getCachedProducts() {
   }
 }
 
-// Функція для завантаження даних з XML
-function fetchXmlData(forceFetch = false) {
+// Функція для завантаження даних
+async function fetchData(forceFetch = false) {
   const updateInterval = 15 * 60 * 1000; // 15 хвилин
   const lastUpdate = getLastUpdateTime();
   const now = Date.now();
   const cachedProducts = getCachedProducts();
 
-  // Якщо є свіжий кеш (менше 15 хвилин) і не змушуємо оновлення, використовуємо його
+  // Якщо є свіжий кеш і не force, використовуємо його
   if (!forceFetch && cachedProducts && (now - lastUpdate < updateInterval)) {
     console.log("Використовуються свіжі кешовані дані");
     allProducts = cachedProducts;
-    const newProducts = allProducts.slice(0, 100);
-    renderProducts(newProducts);
+    renderProducts(allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId)); // Початково новинки
     scheduleNextUpdate();
     return;
   }
 
-  console.log("Розпочато завантаження даних з API");
-  fetch(xmlUrl)
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      return res.text();
-    })
-    .then(str => {
-      console.log("Отримано XML-відповідь:", str.substring(0, 200));
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(str, "application/xml");
+  console.log("Розпочато завантаження даних з бекенду");
+  try {
+    const response = await fetch(backendUrl);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
 
-      if (xml.getElementsByTagName("parsererror").length > 0) {
-        throw new Error("Помилка парсингу XML");
-      }
-
-      // Завантаження категорій
-      const categories = xml.getElementsByTagName("category");
-      const categorySelect = document.getElementById("categorySelect");
-      console.log(`Знайдено категорій у XML: ${categories.length}`);
-
-      categorySelect.innerHTML = '<option value="new">Новинки</option>';
-      let categoriesAdded = 0;
-      for (let category of categories) {
-        const id = category.getAttribute("id");
-        const name = category.textContent.trim();
-        if (id && name) {
-          const option = document.createElement("option");
-          option.value = id;
-          option.textContent = name;
-          categorySelect.appendChild(option);
-          console.log(`Додано категорію: ID=${id}, Назва=${name}`);
-          categoriesAdded++;
-        } else {
-          console.warn(`Пропущено категорію: ID=${id}, Назва=${name}`);
-        }
-      }
-      if (categoriesAdded === 0) {
-        console.warn("Попередження: жодної категорії не додано до select");
-        localStorage.clear();
-      }
-
-      // Завантаження товарів
-      const items = xml.getElementsByTagName("item");
-      const productsByGroup = {};
-      console.log(`Знайдено елементів: ${items.length}`);
-      for (let item of items) {
-        const groupId = item.getAttribute("group_id");
-        const available = item.getAttribute("available") === "true";
-        if (!productsByGroup[groupId] && available) {
-          productsByGroup[groupId] = {
-            id: item.getAttribute("id"),
-            groupId: groupId,
-            categoryId: item.getElementsByTagName("categoryId")[0]?.textContent,
-            name: item.getElementsByTagName("name")[0]?.textContent || "Без назви",
-            price: item.getElementsByTagName("priceuah")[0]?.textContent || "N/A",
-            desc: item.getElementsByTagName("description")[0]?.textContent || "",
-            images: Array.from(item.getElementsByTagName("image")).map(img => img.textContent),
-            sizes: {}
-          };
-        }
-        if (available) {
-          const size = parseInt(item.getElementsByTagName("param")[0]?.textContent.match(/\d+/)?.[0]) || 0;
-          const quantity = parseInt(item.getElementsByTagName("quantity_in_stock")[0]?.textContent) || 0;
-          if (size && quantity > 0) {
-            productsByGroup[groupId].sizes[size] = quantity;
-          }
-        }
-      }
-      allProducts = Object.values(productsByGroup);
-
-      console.log(`Знайдено унікальних товарів: ${allProducts.length}`);
-      if (allProducts.length === 0) {
-        console.warn("Попередження: жодного товару не знайдено");
-        localStorage.clear();
-      }
-
-      allProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
-      saveDataToStorage(allProducts);
-      const newProducts = allProducts.slice(0, 100);
-      renderProducts(newProducts);
-      scheduleNextUpdate();
-    })
-    .catch(err => {
-      console.error("Помилка завантаження XML:", err);
-      const cachedProducts = getCachedProducts();
-      if (cachedProducts && cachedProducts.length > 0) {
-        allProducts = cachedProducts;
-        const newProducts = allProducts.slice(0, 100);
-        renderProducts(newProducts);
-        alert("Використовуються збережені дані через помилку завантаження.");
-      } else {
-        localStorage.clear();
-        alert("Помилка завантаження даних і немає кешованих даних. Спроба повторного завантаження...");
-        fetchXmlData(true);
-      }
-      scheduleNextUpdate();
+    // Заповнення категорій
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.innerHTML = '<option value="all">Всі</option><option value="new">Новинки</option>';
+    data.categories.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.id;
+      option.textContent = cat.name;
+      categorySelect.appendChild(option);
     });
+
+    allProducts = data.items;
+    console.log(`Знайдено товарів: ${allProducts.length}`);
+    saveDataToStorage(allProducts);
+    renderProducts(allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId)); // Початково новинки
+    scheduleNextUpdate();
+  } catch (err) {
+    console.error("Помилка завантаження даних:", err);
+    const cachedProducts = getCachedProducts();
+    if (cachedProducts && cachedProducts.length > 0) {
+      allProducts = cachedProducts;
+      renderProducts(allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId));
+      alert("Використовуються збережені дані через помилку завантаження.");
+    } else {
+      localStorage.clear();
+      alert("Помилка завантаження даних і немає кешованих даних. Спроба повторного завантаження...");
+      fetchData(true);
+    }
+    scheduleNextUpdate();
+  }
 }
 
 // Функція для планування наступного оновлення
@@ -153,7 +90,7 @@ function scheduleNextUpdate() {
   const updateInterval = 15 * 60 * 1000; // 15 хвилин
   setTimeout(() => {
     console.log("Виконується заплановане оновлення даних");
-    fetchXmlData(true); // Змушуємо оновлення
+    fetchData(true);
   }, updateInterval);
 }
 
@@ -172,9 +109,11 @@ function renderProducts(products) {
     productDiv.className = "product";
 
     let tableHtml = `<table><tr><th>Розмір</th><th>Довжина (см)</th><th>Наявність</th></tr>`;
-    for (let size = 36; size <= 46; size++) {
+    const lengths = [22.5, 23.5, 24.0, 25.0, 25.5, 26.0, 26.5, 27.5, 28.0, 28.5, 29.0];
+    for (let i = 0; i < lengths.length; i++) {
+      const size = 36 + i;
       const inStock = product.sizes[size] || 0;
-      const length = [22.5, 23.5, 24.0, 25.0, 25.5, 26.0, 26.5, 27.5, 28.0, 28.5, 29.0, 29.5][size - 36] || 0;
+      const length = lengths[i];
       tableHtml += `<tr ${inStock > 0 ? 'style="background-color: #90ee90;"' : ''}>
         <td>${size}</td><td>${length}</td><td>${inStock}</td></tr>`;
     }
@@ -183,8 +122,8 @@ function renderProducts(products) {
     productDiv.innerHTML = `
       <img src="${product.images[0] || ''}" alt="${product.name}" class="product-image">
       <h3>${product.name}</h3>
-      <p>Ціна: ${product.price} грн</p>
-      <p>Виробник: ${product.desc.match(/Виробник : (.*?)<\/p>/)?.[1] || 'Невідомо'}</p>
+      <p>Ціна: ${product.priceuah} грн</p>
+      <p>Виробник: ${product.description.match(/Виробник : (.*?)<\/p>/)?.[1] || 'Невідомо'}</p>
       ${tableHtml}
     `;
     container.appendChild(productDiv);
@@ -197,16 +136,17 @@ function renderProducts(products) {
 document.getElementById("categorySelect").addEventListener("change", function() {
   const selected = this.value;
   console.log(`Вибрано категорію: ${selected}`);
+  let filteredProducts = allProducts;
   if (selected === "new") {
-    const newProducts = allProducts.slice(0, 100);
-    renderProducts(newProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id)));
+    filteredProducts = allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId);
+  } else if (selected !== "all") {
+    filteredProducts = allProducts.filter(p => p.categoryId === selected).sort((a, b) => b.maxId - a.maxId);
   } else {
-    const filtered = allProducts.filter(p => p.categoryId === selected);
-    console.log(`Відфільтровано товарів для категорії ${selected}: ${filtered.length}`);
-    renderProducts(filtered.sort((a, b) => parseInt(b.id) - parseInt(a.id)));
+    filteredProducts = allProducts.sort((a, b) => b.maxId - a.maxId);
   }
+  renderProducts(filteredProducts);
 });
 
 // Початкове завантаження
 console.log("Розпочато початкове завантаження");
-fetchXmlData();
+fetchData();
