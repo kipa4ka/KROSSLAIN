@@ -1,4 +1,4 @@
-const backendUrl = 'https://твоя-render-url.onrender.com/api/products'; // Заміни на реальний URL з Render
+const backendUrl = 'https://krosslain-server.onrender.com'; // Заміни на реальний URL з Render
 let allProducts = [];
 
 // Функція для отримання часу останнього оновлення з localStorage
