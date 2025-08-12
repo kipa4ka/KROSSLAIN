@@ -119,10 +119,14 @@ function renderProducts(products) {
     }
     tableHtml += "</table>";
 
+    // Обрізаємо артикул до 5 символів
+    const barcodeDisplay = product.barcode ? product.barcode.slice(0, 5) : 'Немає';
+
     productDiv.innerHTML = `
       <img src="${product.images[0] || ''}" alt="${product.name}" class="product-image">
       <h3>${product.name}</h3>
       <p>Ціна: ${product.priceuah} грн</p>
+      <p>Артикул: ${barcodeDisplay}</p>
       <p>Виробник: ${product.description.match(/Виробник : (.*?)<\/p>/)?.[1] || 'Невідомо'}</p>
       ${tableHtml}
     `;
@@ -131,6 +135,9 @@ function renderProducts(products) {
 
   console.log(`Відображено товарів: ${container.children.length}`);
 }
+
+
+
 
 document.getElementById("categorySelect").addEventListener("change", function() {
   const selected = this.value;
