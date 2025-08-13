@@ -107,3 +107,129 @@ tr:hover {
     font-size: 14px;
     color: #555;
 }
+
+.footer {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    padding: 60px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 20px;
+    font-family: 'Arial', sans-serif;
+}
+
+.footer-column {
+    flex: 1;
+    min-width: 200px;
+    margin-bottom: 20px;
+    padding-right: 30px; /* Відступ з правого боку для вирівнювання */
+}
+
+.footer-logo {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: #00c8ff;
+    text-align: left
+    
+}
+
+.footer-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #cccccc;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.footer-subtitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 10px;
+    text-align: left
+}
+
+.socials {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-start;
+    padding-left: 0; /* Соцмережі починаються з тієї ж лінії, що й текст */
+}
+
+.social-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: #333333;
+    border-radius: 5px; /* Закруглення кутів 20px */
+    transition: background-color 0.3s ease;
+}
+
+.social-icon img {
+    width: 35px;
+    height: 35px;
+    transition: transform 0.3s ease;
+}
+
+.social-icon:hover {
+    background-color: #00aaff;
+}
+
+.social-icon:hover img {
+    transform: scale(1.2);
+}
+
+.footer-column h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #ffffff;
+}
+
+.footer-column a {
+    display: block;
+    color: #cccccc;
+    text-decoration: none;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    transition: color 0.3s ease;
+}
+
+.footer-column a:hover {
+    color: #ff6200;
+}
+
+.footer-copyright {
+    width: 100%;
+    text-align: center;
+    border-top: 1px solid #333333;
+    color: #cccccc;
+    font-size: 0.95rem;
+    padding-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .footer-column {
+        padding-right: 0; /* Прибираємо правий відступ для мобільних */
+    }
+
+    .socials {
+        justify-content: center;
+    }
+}
+
+.logo_down {
+    width: 75px;
+    height: 75px;
+    vertical-align: middle;
+
+}
