@@ -8,59 +8,47 @@
 </head>
 <body>
     <header>
-        🛒 Каталог KROSSLAIN
+        <div class="high-logo">
+            <img src="image/logo_down.png" alt="KROSSLAIN Logo" class="logo_high">
+            KROSSLAIN
+        </div>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Шукати товари..." oninput="searchProducts()">
+        </div>
+        
+        <div class="account-panel">
+            
+            
     </header>
 
     <div class="filter">
         Фільтр по категорії:
         <select id="categorySelect" title="Виберіть категорію товарів">
-            <option value="all">Всі</option>
+            <option value="new">Новинки</option>
         </select>
     </div>
 
-    <div class="time">Дані оновлено:</div>
-    <div class="time" id="lastUpdate">ніколи</div>
+    <div id="lastUpdate" class="time">Дані оновлено: ніколи</div>
 
     <div id="products" class="products-container"></div>
-    
+
     <footer class="footer">
         <div class="footer-column">
-            <h2 class="footer-logo">KROSSLAIN<img class="logo_down" src=image/logo_down.png></h2>
-            <p class="footer-text">
-                Ваш надійний партнер у світі якісного взуття.
+            <div class="footer-logo">KROSSLAIN</div>
+            <div class="footer-text">
+                Ваш надійний партнер у світі якісного взуття.<br>
                 Ми пропонуємо найкращі кросівки від світових брендів.
-            </p>
-            <p class="footer-subtitle">Слідкуй за нами</p>
+            </div>
             <div class="socials">
-                <a href="https://www.instagram.com/krosslain" class="social-icon"><img src="image/instagram.png" alt="Instagram"></a>
-                <a href="https://www.tiktok.com/@krosslain" class="social-icon"><img src="image/tiktok.png" alt="TikTok"></a>
                 <a href="https://t.me/KROSSLAIN" class="social-icon"><img src="image/telegram.png" alt="Telegram"></a>
-                <a href="#" class="social-icon"><img src="image/pinterest.png" alt="Pinterest"></a>
+                <a href="https://www.instagram.com/krosslain" class="social-icon"><img src="image/instagram.png" alt="Instagram"></a>
+                <a href="www.tiktok.com/@krosslain" class="social-icon"><img src="image/tiktok.png" alt="TikTok"></a>
+                <a href="https://se.pinterest.com/KROSSLAIN/" class="social-icon"><img src="image/pinterest.png" alt="Pinterest"></a>
             </div>
         </div>
 
         <div class="footer-column">
-            <h3>Каталог</h3>
-            <a href="#">Всі товари</a>
-            <a href="#">Новинки</a>
-            <a href="#">Акції</a>
-            <a href="#">Чоловічі кросівки</a>
-            <a href="#">Жіночі кросівки</a>
-            <a href="#">Дитячі кросівки</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Бренди</h3>
-            <a href="#">Nike</a>
-            <a href="#">Adidas</a>
-            <a href="#">Puma</a>
-            <a href="#">New Balance</a>
-            <a href="#">Converse</a>
-            <a href="#">Vans</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Компанія</h3>
+            <h3 class="footer-subtitle">Компанія</h3>
             <a href="#">Про нас</a>
             <a href="#">Контакти</a>
             <a href="#">Новини</a>
@@ -68,7 +56,7 @@
         </div>
 
         <div class="footer-column">
-            <h3>Підтримка</h3>
+            <h3 class="footer-subtitle">Підтримка</h3>
             <a href="#">Доставка і оплата</a>
             <a href="#">Обмін і повернення</a>
             <a href="#">Дізнатись розмір</a>
@@ -78,10 +66,14 @@
         </div>
 
         <div class="footer-copyright">
-            <p>© 2025 SupploraX. Всі права захищені.</p>
+            <div class="prava">© 2025 SupploraX. Всі права захищені.</div>
+            <div class="right_prava links">
+                <a href="#">Політика конфіденційності</a>
+                <a href="#">Умови використання</a>
+                <a href="#">Cookies</a>
+            </div>
         </div>
     </footer>
-
 
     <script src="script.js"></script>
 </body>

@@ -40,7 +40,7 @@ async function fetchData(forceFetch = false) {
   if (!forceFetch && cached.products && cached.categories && (now - lastUpdate < updateInterval)) {
     console.log("Використовуємо кеш:", cached.products.length, "товарів і", cached.categories.length, "категорій");
     allProducts = cached.products;
-    renderProducts(allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId));
+    renderProducts(getTop100Newest(allProducts)); // Показуємо 100 найновіших
     updateCategories(cached.categories);
     scheduleNextUpdate();
     return;
@@ -58,14 +58,14 @@ async function fetchData(forceFetch = false) {
     allProducts = data.items || [];
     console.log(`Знайдено товарів: ${allProducts.length}, категорій: ${data.categories?.length || 0}`);
     saveDataToStorage(allProducts, data.categories || []);
-    renderProducts(allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId));
+    renderProducts(getTop100Newest(allProducts)); // Показуємо 100 найновіших
     scheduleNextUpdate();
   } catch (err) {
     console.error("Помилка завантаження даних:", err);
     if (cached.products && cached.categories) {
       allProducts = cached.products;
       updateCategories(cached.categories);
-      renderProducts(allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId));
+      renderProducts(getTop100Newest(allProducts));
       alert("Використовуються збережені дані через помилку завантаження.");
     } else {
       localStorage.clear();
@@ -76,10 +76,49 @@ async function fetchData(forceFetch = false) {
   }
 }
 
+// Нова функція для отримання 100 найновіших товарів
+function getTop100Newest(products) {
+  return [...products].sort((a, b) => b.maxId - a.maxId).slice(0, 100);
+}
+
 function updateCategories(categories) {
   const categorySelect = document.getElementById("categorySelect");
-  categorySelect.innerHTML = '<option value="all">Всі</option><option value="new">Новинки</option>';
-  (categories || []).forEach(cat => {
+  categorySelect.innerHTML = '<option value="new">Новинки</option>'; // Лише "Новинки" як перша опція
+
+  const categoryOrder = [
+    "Новинки",
+    "NIKE чоловічі",
+    "NIKE жіночі",
+    "ADIDAS чоловічі",
+    "ADIDAS жіночі",
+    "New Balance чоловічі",
+    "New Balance жіночі",
+    "ASICS чоловічі",
+    "ASICS жіночі",
+    "REEBOK чоловічі",
+    "REEBOK жіночі",
+    "PUMA чоловічі",
+    "PUMA жіночі",
+    "Salomon чоловічі",
+    "Salomon жіночі",
+    "HOKA чоловічі",
+    "HOKA жіночі",
+    "COLUMBIA чоловічі",
+    "LACOSTE чоловічі",
+    "Balenciaga жіночі",
+    "Без бренду",
+    "CROCS",
+    "Skechers",
+    "SALE чоловічі (розпродаж)",
+    "SALE жіночі (розпродаж)",
+    "Зимові кросівки"
+  ];
+
+  const validCategories = categories
+    .filter(cat => categoryOrder.includes(cat.name))
+    .sort((a, b) => categoryOrder.indexOf(a.name) - categoryOrder.indexOf(b.name));
+
+  validCategories.forEach(cat => {
     const option = document.createElement("option");
     option.value = cat.id;
     option.textContent = cat.name;
@@ -102,33 +141,50 @@ function renderProducts(products) {
   lastUpdateDisplay.textContent = lastUpdate ? new Date(lastUpdate).toLocaleString() : "Ніколи";
   container.innerHTML = "";
 
+  // Сортуємо продукти: з наявністю зверху, без наявності внизу
+  const productsWithStock = [];
+  const productsWithoutStock = [];
   products.forEach(product => {
+    const hasStock = Object.values(product.sizes).some(inStock => inStock > 0);
+    if (hasStock) {
+      productsWithStock.push(product);
+    } else {
+      productsWithoutStock.push(product);
+    }
+  });
+
+  // Об'єднуємо відсортовані списки
+  const sortedProducts = [...productsWithStock, ...productsWithoutStock];
+
+  sortedProducts.forEach(product => {
     if (Object.keys(product.sizes).length === 0) return;
 
     const productDiv = document.createElement("div");
     productDiv.className = "product";
 
-    let tableHtml = `<table><tr><th>Розмір</th><th>Довжина (см)</th><th>Наявність</th></tr>`;
-    const lengths = [22.5, 23.5, 24.0, 25.0, 25.5, 26.0, 26.5, 27.5, 28.0, 28.5, 29.0];
-    for (let i = 0; i < lengths.length; i++) {
-      const size = 36 + i;
+    let tableHtml = `<table><tr><th>Розмір</th><th>Наявність</th></tr>`; // Залишено лише "Розмір" і "Наявність"
+    const sizes = Array.from({ length: 11 }, (_, i) => 36 + i); // Розміри від 36 до 46
+    for (let i = 0; i < sizes.length; i++) {
+      const size = sizes[i];
       const inStock = product.sizes[size] || 0;
-      const length = lengths[i];
       tableHtml += `<tr ${inStock > 0 ? 'style="background-color: #90ee90;"' : ''}>
-        <td>${size}</td><td>${length}</td><td>${inStock}</td></tr>`;
+        <td>${size}</td><td>${inStock > 0 ? 'Є' : '0'}</td></tr>`; // "Є" для наявності, "0" для відсутності
     }
     tableHtml += "</table>";
 
-    // Обрізаємо артикул до 5 символів
-    const barcodeDisplay = product.barcode ? product.barcode.slice(0, 5) : 'Немає';
+    const barcodeDisplay = product.barcode ? product.barcode.replace(/[-_]/g, '').slice(0, 5) : 'Немає';
+    const englishName = product.name.split(/[^a-zA-Z0-9\s]/)[0].trim() || product.name;
 
     productDiv.innerHTML = `
+      <div class="product-left"></div>
       <img src="${product.images[0] || ''}" alt="${product.name}" class="product-image">
-      <h3>${product.name}</h3>
-      <p>Ціна: ${product.priceuah} грн</p>
-      <p>Артикул: ${barcodeDisplay}</p>
-      <p>Виробник: ${product.description.match(/Виробник : (.*?)<\/p>/)?.[1] || 'Невідомо'}</p>
+      <h3>${englishName}</h3>
       ${tableHtml}
+      <div class="product-info">
+        <p><strong>Артикул:</strong> ${barcodeDisplay}</p>
+        <p><strong>Виробник:</strong> ${product.description.match(/Виробник : (.*?)<\/p>/)?.[1] || 'Невідомо'}</p>
+        <p><strong>Ціна:</strong> ${product.priceuah} грн</p>
+      </div>
     `;
     container.appendChild(productDiv);
   });
@@ -136,22 +192,24 @@ function renderProducts(products) {
   console.log(`Відображено товарів: ${container.children.length}`);
 }
 
-
-
-
 document.getElementById("categorySelect").addEventListener("change", function() {
   const selected = this.value;
   console.log(`Вибрано категорію: ${selected}`);
   let filteredProducts = allProducts;
   if (selected === "new") {
-    filteredProducts = allProducts.slice(0, 100).sort((a, b) => b.maxId - a.maxId);
-  } else if (selected !== "all") {
-    filteredProducts = allProducts.filter(p => p.categoryId === selected).sort((a, b) => b.maxId - a.maxId);
+    filteredProducts = getTop100Newest(allProducts); // Використовуємо 100 найновіших
   } else {
-    filteredProducts = allProducts.sort((a, b) => b.maxId - a.maxId);
+    filteredProducts = allProducts.filter(p => p.categoryId === selected).sort((a, b) => b.maxId - a.maxId);
   }
   renderProducts(filteredProducts);
 });
 
 console.log("Розпочато початкове завантаження");
 fetchData();
+
+// Функція пошуку
+function searchProducts() {
+  const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+  const filtered = allProducts.filter(product => product.name.toLowerCase().includes(searchTerm));
+  renderProducts(filtered);
+}
